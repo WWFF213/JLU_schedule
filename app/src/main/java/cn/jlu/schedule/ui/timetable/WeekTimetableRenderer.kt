@@ -15,6 +15,7 @@ import cn.jlu.schedule.domain.CourseMeetingDisplayRef
 import cn.jlu.schedule.domain.CourseMeetingRef
 import cn.jlu.schedule.model.Weekday
 import cn.jlu.schedule.ui.theme.ThemePalette
+import androidx.core.graphics.ColorUtils
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -37,7 +38,9 @@ class WeekTimetableRenderer(
         Weekday.SUNDAY
     )
 
-    private val panelAlpha = if (hasCustomBackground) 0.34f else 1f
+    // Keep enough opacity for course text to remain readable over user photos.
+    private val panelAlpha = if (hasCustomBackground) 0.68f else 1f
+    private var density = 1f
 
     fun render(
         headerRow: LinearLayout,
@@ -49,6 +52,7 @@ class WeekTimetableRenderer(
         today: LocalDate,
         currentSection: Int?
     ) {
+        density = headerRow.resources.displayMetrics.density
         headerRow.removeAllViews()
         bodyRow.removeAllViews()
         headerRow.setPadding(metrics.outerPadding, 0, metrics.outerPadding, 0)
@@ -562,8 +566,11 @@ class WeekTimetableRenderer(
     private fun roundedBackground(fill: Int, radius: Float = 8f): GradientDrawable {
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
+            cornerRadius = radius * density
             setColor(fill)
+            if ((fill ushr 24) > 0x40) {
+                setStroke(1, ColorUtils.setAlphaComponent(palette.glassHighlight, if (palette.isDark) 0x35 else 0x50))
+            }
         }
     }
 

@@ -40,6 +40,7 @@ import cn.jlu.schedule.ui.importer.ImportBrowserActivity
 import cn.jlu.schedule.ui.importer.QuickImportActivity
 import cn.jlu.schedule.ui.theme.ThemePaletteProvider
 import cn.jlu.schedule.ui.theme.UiFeedback
+import cn.jlu.schedule.ui.theme.GlassSurface
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -97,6 +98,9 @@ class TimetableFragment : Fragment() {
         importScheduleButton = view.findViewById(R.id.importScheduleButton)
 
         val palette = ThemePaletteProvider.fromContext(requireContext())
+        GlassSurface.apply(view.findViewById(R.id.timetableHeader), palette, GlassSurface.Variant.Panel, 24f)
+        GlassSurface.apply(addCourseButton, palette, GlassSurface.Variant.Control, 18f)
+        GlassSurface.apply(importScheduleButton, palette, GlassSurface.Variant.Control, 18f)
         addCourseButton.imageTintList = ColorStateList.valueOf(palette.iconTint)
         importScheduleButton.imageTintList = ColorStateList.valueOf(palette.iconTint)
 
@@ -235,11 +239,7 @@ class TimetableFragment : Fragment() {
         val panel = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(14), dp(18), dp(18))
-            background = GradientDrawable().apply {
-                cornerRadius = dp(18).toFloat()
-                setColor(palette.panelAltBackground)
-                setStroke(dp(1), ColorUtils.blendARGB(palette.panelAltBackground, palette.iconTint, 0.18f))
-            }
+            background = GlassSurface.drawable(ctx, palette, GlassSurface.Variant.Strong, 28f)
         }
 
         val header = LinearLayout(ctx).apply {
@@ -349,7 +349,7 @@ class TimetableFragment : Fragment() {
         ).apply { topMargin = dp(12) })
 
         dialog.show()
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        UiFeedback.styleDialogSurface(dialog, palette)
         dialog.window?.setDimAmount(0.42f)
         cancel.setOnClickListener { dialog.dismiss() }
     }

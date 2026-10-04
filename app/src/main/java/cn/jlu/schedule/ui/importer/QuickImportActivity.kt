@@ -2,7 +2,6 @@ package cn.jlu.schedule.ui.importer
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -17,7 +16,6 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.lifecycleScope
 import cn.jlu.schedule.R
 import cn.jlu.schedule.auth.CampusCookieJar
@@ -32,6 +30,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import cn.jlu.schedule.ui.auth.LoginActivity
 import cn.jlu.schedule.ui.theme.ThemePaletteProvider
 import cn.jlu.schedule.ui.theme.UiFeedback
+import cn.jlu.schedule.ui.theme.GlassSurface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -86,12 +85,8 @@ class QuickImportActivity : AppCompatActivity() {
         setContentView(R.layout.activity_quick_import)
 
         val palette = ThemePaletteProvider.fromContext(this)
-        findViewById<LinearLayout>(R.id.quickCard).background = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 22f
-            setColor(palette.panelAltBackground)
-            setStroke(1, ColorUtils.blendARGB(palette.panelAltBackground, palette.iconTint, 0.2f))
-        }
+        findViewById<LinearLayout>(R.id.quickCard).background =
+            GlassSurface.drawable(this, palette, GlassSurface.Variant.Strong, 28f)
         message = findViewById(R.id.quickMessage)
         progress = findViewById(R.id.quickProgress)
         actionLogin = findViewById(R.id.quickActionLogin)

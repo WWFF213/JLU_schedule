@@ -1,6 +1,5 @@
 package cn.jlu.schedule.ui.theme
 
-import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.widget.Button
 import androidx.appcompat.app.AlertDialog
@@ -20,10 +19,7 @@ object UiFeedback {
 
     fun stylePrimaryButton(button: Button, palette: ThemePalette) {
         button.backgroundTintList = null
-        button.background = roundedDrawable(
-            fillColor = palette.buttonBackground,
-            strokeColor = ColorUtils.blendARGB(palette.buttonBackground, palette.iconTint, 0.25f)
-        )
+        button.background = GlassSurface.drawable(button.context, palette, GlassSurface.Variant.Control, 18f)
         button.setTextColor(palette.buttonText)
         button.isAllCaps = false
         button.minHeight = 0
@@ -33,10 +29,7 @@ object UiFeedback {
 
     fun styleSecondaryButton(button: Button, palette: ThemePalette) {
         button.backgroundTintList = null
-        button.background = roundedDrawable(
-            fillColor = palette.panelAltBackground,
-            strokeColor = ColorUtils.blendARGB(palette.panelAltBackground, palette.iconTint, 0.35f)
-        )
+        button.background = GlassSurface.drawable(button.context, palette, GlassSurface.Variant.Panel, 18f)
         button.setTextColor(palette.textSecondary)
         button.isAllCaps = false
         button.minHeight = 0
@@ -52,10 +45,10 @@ object UiFeedback {
             ColorUtils.blendARGB(0xFFD35454.toInt(), palette.buttonBackground, 0.45f)
         }
         val textColor = if (palette.isDark) 0xFFEF9A9A.toInt() else 0xFFFFFFFF.toInt()
-        button.background = roundedDrawable(
-            fillColor = danger,
-            strokeColor = ColorUtils.blendARGB(danger, palette.textPrimary, 0.25f)
-        )
+        button.background = GlassSurface.drawable(button.context, palette, GlassSurface.Variant.Control, 18f).apply {
+            setColor(danger)
+            setStroke(1, ColorUtils.setAlphaComponent(palette.textPrimary, 0x55))
+        }
         button.setTextColor(textColor)
         button.isAllCaps = false
         button.minHeight = 0
@@ -64,29 +57,14 @@ object UiFeedback {
     }
 
     fun styleInput(input: android.widget.EditText, palette: ThemePalette) {
-        input.background = roundedDrawable(
-            fillColor = palette.panelBackground,
-            strokeColor = ColorUtils.blendARGB(palette.panelBackground, palette.iconTint, 0.30f)
-        )
+        input.background = GlassSurface.drawable(input.context, palette, GlassSurface.Variant.Control, 18f)
         input.setTextColor(palette.textPrimary)
         input.setHintTextColor(palette.textSecondary)
     }
 
     fun styleDialogSurface(dialog: AlertDialog, palette: ThemePalette) {
         dialog.window?.setBackgroundDrawable(
-            roundedDrawable(
-                fillColor = palette.panelAltBackground,
-                strokeColor = ColorUtils.blendARGB(palette.panelAltBackground, palette.iconTint, 0.22f)
-            )
+            GlassSurface.drawable(dialog.context, palette, GlassSurface.Variant.Strong, 28f)
         )
-    }
-
-    private fun roundedDrawable(fillColor: Int, strokeColor: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 18f
-            setColor(fillColor)
-            setStroke(2, strokeColor)
-        }
     }
 }

@@ -38,6 +38,7 @@ import cn.jlu.schedule.domain.SectionTimes
 import cn.jlu.schedule.ui.theme.ThemePalette
 import cn.jlu.schedule.ui.theme.ThemePaletteProvider
 import cn.jlu.schedule.ui.theme.UiFeedback
+import cn.jlu.schedule.ui.theme.GlassSurface
 import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -79,7 +80,11 @@ class SettingsFragment : Fragment() {
             pendingSourceUri = null
             return@registerForActivityResult
         }
-        val outputUri = result.data?.let { UCrop.getOutput(it) } ?: return@registerForActivityResult
+        val outputUri = result.data?.let { UCrop.getOutput(it) }
+        if (outputUri == null) {
+            pendingSourceUri = null
+            return@registerForActivityResult
+        }
         AppPreferences.setCustomBackgroundUri(requireContext(), outputUri.toString())
         (activity as? MainActivity)?.refreshCustomBackground()
         pendingSourceUri = null
@@ -123,7 +128,6 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val palette = ThemePaletteProvider.fromContext(requireContext())
-        val density = resources.displayMetrics.density
 
         // 卡片与分隔线按主题色板着色
         listOf(
@@ -135,15 +139,7 @@ class SettingsFragment : Fragment() {
             view.findViewById<LinearLayout>(R.id.settingsCardData),
             view.findViewById<LinearLayout>(R.id.settingsCardAbout),
         ).forEach { card ->
-            card.background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = 18f * density
-                setColor(palette.detailCard)
-                setStroke(
-                    maxOf(1, density.toInt()),
-                    ColorUtils.blendARGB(palette.detailCard, palette.textSecondary, 0.13f)
-                )
-            }
+            GlassSurface.apply(card, palette, GlassSurface.Variant.Panel, 24f)
         }
         listOf(
             view.findViewById<ImageView>(R.id.iconTimetable),
@@ -155,15 +151,9 @@ class SettingsFragment : Fragment() {
             view.findViewById<ImageView>(R.id.iconAbout),
         ).forEach { icon ->
             icon.imageTintList = ColorStateList.valueOf(palette.iconTint)
-            icon.background = GradientDrawable().apply {
-                cornerRadius = 11f * density
-                setColor(ColorUtils.blendARGB(palette.detailCard, palette.buttonBackground, 0.65f))
-            }
+            icon.background = GlassSurface.drawable(icon.context, palette, GlassSurface.Variant.Control, 14f)
         }
-        view.findViewById<View>(R.id.accountStatusPanel).background = GradientDrawable().apply {
-            cornerRadius = 12f * density
-            setColor(ColorUtils.blendARGB(palette.detailCard, palette.buttonBackground, 0.46f))
-        }
+        GlassSurface.apply(view.findViewById(R.id.accountStatusPanel), palette, GlassSurface.Variant.Control, 18f)
 
         // 可点击行
         val semesterStartDateText = view.findViewById<TextView>(R.id.semesterStartDateText)
@@ -621,6 +611,7 @@ class SettingsFragment : Fragment() {
         }
 
         val cropIntent = UCrop.of(sourceUri, destinationUri)
+            .withMaxResultSize(2048, 2048)
             .withOptions(options)
             .getIntent(requireContext())
         runCatching {

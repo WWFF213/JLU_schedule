@@ -492,12 +492,7 @@ class TimetableFragment : Fragment() {
         // 面板与输入框按当前主题着色
         val dialogPalette = ThemePaletteProvider.fromContext(ctx)
         formView.findViewById<LinearLayout>(R.id.addCoursePanel).background =
-            GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = 20f
-                setColor(dialogPalette.panelAltBackground)
-                setStroke(2, ColorUtils.blendARGB(dialogPalette.panelAltBackground, dialogPalette.iconTint, 0.22f))
-            }
+            GlassSurface.drawable(ctx, dialogPalette, GlassSurface.Variant.Strong, 28f)
         // 每个输入框必须持有独立的 GradientDrawable 实例：共享实例会在首帧后被
         // 最后一个不同尺寸的视图改写 bounds，聚焦重绘时边框按过期尺寸渲染（框变短）
         listOf(
@@ -506,7 +501,7 @@ class TimetableFragment : Fragment() {
         ).forEach { input ->
             input.background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = 10f
+                cornerRadius = 18f * resources.displayMetrics.density
                 setColor(dialogPalette.panelBackground)
                 setStroke(2, ColorUtils.blendARGB(dialogPalette.panelBackground, dialogPalette.iconTint, 0.18f))
             }

@@ -13,6 +13,7 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RadioGroup
 import android.widget.Spinner
@@ -228,53 +229,140 @@ class TimetableFragment : Fragment() {
     private fun showImportSourceDialog() {
         val ctx = requireContext()
         val palette = ThemePaletteProvider.fromContext(ctx)
+        val density = resources.displayMetrics.density
+        fun dp(value: Int): Int = (value * density + 0.5f).toInt()
+
         val panel = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(34, 30, 34, 20)
+            setPadding(dp(18), dp(14), dp(18), dp(18))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(18).toFloat()
+                setColor(palette.panelAltBackground)
+                setStroke(dp(1), ColorUtils.blendARGB(palette.panelAltBackground, palette.iconTint, 0.18f))
+            }
         }
-        val quickImport = Button(ctx).apply { text = getString(R.string.import_quick) }
-        val inCampus = Button(ctx).apply { text = "我在校内" }
-        val offCampus = Button(ctx).apply { text = "我在校外" }
-        val cancel = Button(ctx).apply { text = "取消" }
-        UiFeedback.stylePrimaryButton(quickImport, palette)
-        UiFeedback.styleSecondaryButton(inCampus, palette)
-        UiFeedback.styleSecondaryButton(offCampus, palette)
-        UiFeedback.styleSecondaryButton(cancel, palette)
-        panel.addView(quickImport)
-        panel.addView(inCampus, LinearLayout.LayoutParams(
+
+        val header = LinearLayout(ctx).apply {
+            gravity = android.view.Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(56)
+            )
+        }
+        val title = TextView(ctx).apply {
+            text = "选择导入网络"
+            textSize = 20f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(palette.textPrimary)
+            gravity = android.view.Gravity.CENTER
+        }
+        header.addView(title, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = 10 })
-        panel.addView(offCampus, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = 10 })
-        panel.addView(cancel, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = 10 })
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ))
+        panel.addView(header)
+
+        fun addImportOption(
+            label: String,
+            description: String,
+            accent: Boolean = false,
+            onClick: () -> Unit
+        ): LinearLayout {
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(dp(20), dp(12), dp(12), dp(12))
+                background = roundedImportItem(
+                    if (accent) palette.buttonBackground else palette.panelBackground,
+                    palette,
+                    14
+                )
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { onClick() }
+            }
+            val copy = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+            }
+            copy.addView(TextView(ctx).apply {
+                text = label
+                textSize = 17f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(if (accent) palette.buttonText else palette.textPrimary)
+            })
+            copy.addView(TextView(ctx).apply {
+                text = description
+                textSize = 13f
+                setTextColor(if (accent) {
+                    ColorUtils.blendARGB(palette.buttonText, palette.buttonBackground, 0.2f)
+                } else palette.textSecondary)
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp(3) }
+            })
+            row.addView(copy, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(ImageView(ctx).apply {
+                setImageResource(R.drawable.ic_settings_chevron)
+                imageTintList = ColorStateList.valueOf(if (accent) palette.buttonText else palette.iconTint)
+                contentDescription = null
+            }, LinearLayout.LayoutParams(dp(24), dp(24)))
+            panel.addView(row, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(74)
+            ).apply { topMargin = dp(10) })
+            return row
+        }
 
         val dialog = AlertDialog.Builder(ctx)
-            .setTitle("选择导入网络")
             .setView(panel)
             .create()
-        dialog.show()
-        UiFeedback.styleDialogSurface(dialog, palette)
 
-        quickImport.setOnClickListener {
+        addImportOption(
+            getString(R.string.import_quick),
+            "使用已登录的校园会话自动获取",
+            accent = true
+        ) {
             dialog.dismiss()
             startQuickImport()
         }
-        inCampus.setOnClickListener {
+        addImportOption("校内网络", "连接校园网后打开教务系统") {
             dialog.dismiss()
             launchImportForAsset("target.url")
         }
-        offCampus.setOnClickListener {
+        addImportOption("校外网络", "通过 VPN 入口访问教务系统") {
             dialog.dismiss()
             launchImportForAsset("VPN.url")
         }
-        cancel.setOnClickListener {
-            dialog.dismiss()
+
+        val cancel = Button(ctx).apply {
+            text = getString(R.string.action_cancel)
+            UiFeedback.styleSecondaryButton(this, palette)
+            textSize = 17f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(dp(28), dp(14), dp(28), dp(14))
+        }
+        panel.addView(cancel, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            dp(62)
+        ).apply { topMargin = dp(12) })
+
+        dialog.show()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.window?.setDimAmount(0.42f)
+        cancel.setOnClickListener { dialog.dismiss() }
+    }
+
+    private fun roundedImportItem(fillColor: Int, palette: cn.jlu.schedule.ui.theme.ThemePalette, radiusDp: Int): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radiusDp * resources.displayMetrics.density
+            setColor(fillColor)
+            setStroke(
+                (resources.displayMetrics.density).toInt().coerceAtLeast(1),
+                ColorUtils.blendARGB(fillColor, palette.iconTint, 0.16f)
+            )
         }
     }
 

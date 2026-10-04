@@ -123,6 +123,7 @@ class WeekTimetableRenderer(
         val leftColumn = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(m.leftColumnWidth, ViewGroup.LayoutParams.WRAP_CONTENT)
+            background = roundedBackground(withAlpha(palette.gridLeftColumn, panelAlpha), radius = 18f)
         }
 
         periodRanges.forEachIndexed { index, time ->
@@ -130,7 +131,6 @@ class WeekTimetableRenderer(
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 layoutParams = LinearLayout.LayoutParams(m.leftColumnWidth, m.sectionHeight)
-                background = roundedBackground(withAlpha(palette.gridLeftColumn, panelAlpha), radius = 8f)
             }
             val label = TextView(context).apply {
                 text = String.format(Locale.getDefault(), "%d", index + 1)

@@ -48,6 +48,14 @@ class MainActivity : AppCompatActivity() {
         backgroundImage = findViewById(R.id.backgroundImage)
         backgroundScrim = findViewById(R.id.backgroundScrim)
         bottomNav = findViewById(R.id.bottomNav)
+        // Four destinations in a compact, centered dock; shrink safely on narrow windows.
+        findViewById<View>(R.id.dockContainer).addOnLayoutChangeListener { dock, _, _, _, _, _, _, _, _ ->
+            val availableWidth = (dock.width - dock.paddingLeft - dock.paddingRight).coerceAtLeast(0)
+            val dockWidth = minOf(availableWidth, (320f * resources.displayMetrics.density).toInt())
+            if (dockWidth > 0 && bottomNav.layoutParams.width != dockWidth) {
+                bottomNav.layoutParams = bottomNav.layoutParams.apply { width = dockWidth }
+            }
+        }
         applyUserAppearance()
         refreshCustomBackground()
         ScheduleRepository.refresh(this)
@@ -197,8 +205,10 @@ class MainActivity : AppCompatActivity() {
             isAppearanceLightNavigationBars = !palette.isDark
         }
         rootContainer.setBackgroundColor(palette.pageBackground)
-        bottomNav.background = GlassSurface.drawable(this, palette, GlassSurface.Variant.Navigation, 24f)
-        bottomNav.elevation = resources.displayMetrics.density * 3f
+        bottomNav.background = GlassSurface.drawable(this, palette, GlassSurface.Variant.Navigation)
+        bottomNav.elevation = resources.displayMetrics.density * 5f
+        bottomNav.isItemActiveIndicatorEnabled = false
+        bottomNav.itemBackground = GlassSurface.dockItem(this, palette)
         backgroundScrim.setBackgroundColor(
             androidx.core.graphics.ColorUtils.setAlphaComponent(palette.pageBackground, 0x38)
         )

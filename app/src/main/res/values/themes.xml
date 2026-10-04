@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <style name="TextAppearance.JLU.Dock" parent="TextAppearance.AppCompat.Caption">
+        <item name="android:textSize">11sp</item>
+        <item name="android:textStyle">normal</item>
+    </style>
+
+    <style name="TextAppearance.JLU.Dock.Active" parent="TextAppearance.JLU.Dock">
+        <item name="android:textStyle">bold</item>
+    </style>
+
     <style name="Theme.JLU" parent="Theme.AppCompat.DayNight.NoActionBar" />
 
     <style name="Theme.JLU.Warm">

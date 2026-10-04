@@ -2,6 +2,12 @@ package cn.jlu.schedule.ui.theme
 
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.InsetDrawable
+import android.graphics.drawable.RippleDrawable
+import android.graphics.drawable.StateListDrawable
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.view.View
 import androidx.core.graphics.ColorUtils
 
@@ -14,7 +20,7 @@ object GlassSurface {
         palette: ThemePalette,
         variant: Variant = Variant.Panel,
         radiusDp: Float = when (variant) {
-            Variant.Navigation -> 24f
+            Variant.Navigation -> 32f
             Variant.Control -> 18f
             else -> 24f
         }
@@ -40,12 +46,46 @@ object GlassSurface {
             cornerRadius = radiusDp * context.resources.displayMetrics.density
             setColor(fill)
             setStroke(context.resources.displayMetrics.density.coerceAtLeast(1f).toInt(), stroke)
+            if (variant == Variant.Navigation) {
+                orientation = GradientDrawable.Orientation.TOP_BOTTOM
+                colors = intArrayOf(
+                    ColorUtils.setAlphaComponent(
+                        ColorUtils.blendARGB(base, Color.WHITE, if (palette.isDark) 0.07f else 0.55f), alpha
+                    ),
+                    fill
+                )
+                setStroke(context.resources.displayMetrics.density.coerceAtLeast(1f).toInt(),
+                    ColorUtils.setAlphaComponent(palette.glassHighlight, if (palette.isDark) 0x48 else 0xB0))
+            }
         }
+    }
+
+    /** Highlight the whole tab (icon and label) inside the floating capsule. */
+    fun dockItem(context: Context, palette: ThemePalette): InsetDrawable {
+        val density = context.resources.displayMetrics.density
+        val selected = drawable(context, palette, Variant.Control, 28f).apply {
+            setColor(ColorUtils.setAlphaComponent(palette.gridHeaderToday, if (palette.isDark) 0xE0 else 0xC0))
+            setStroke(density.coerceAtLeast(1f).toInt(),
+                ColorUtils.setAlphaComponent(palette.glassHighlight, if (palette.isDark) 0x40 else 0xA0))
+        }
+        val states = StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_checked), selected)
+            addState(intArrayOf(), ColorDrawable(Color.TRANSPARENT))
+        }
+        val mask = GradientDrawable().apply {
+            cornerRadius = 28f * density
+            setColor(Color.WHITE)
+        }
+        val ripple = RippleDrawable(
+            ColorStateList.valueOf(ColorUtils.setAlphaComponent(palette.iconTint, 0x24)), states, mask
+        )
+        return InsetDrawable(ripple, (2f * density).toInt(), (4f * density).toInt(),
+            (2f * density).toInt(), (4f * density).toInt())
     }
 
     fun apply(view: View, palette: ThemePalette, variant: Variant = Variant.Panel, radiusDp: Float? = null) {
         view.background = drawable(view.context, palette, variant, radiusDp ?: when (variant) {
-            Variant.Navigation -> 24f
+            Variant.Navigation -> 32f
             Variant.Control -> 18f
             else -> 24f
         })

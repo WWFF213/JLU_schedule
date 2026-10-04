@@ -75,6 +75,11 @@ class SettingsFragment : Fragment() {
     }
 
     private val cropLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == UCrop.RESULT_ERROR) {
+            pendingSourceUri = null
+            UiFeedback.showMessage(view, "图片裁剪失败，请更换图片后重试", paletteForFeedback())
+            return@registerForActivityResult
+        }
         if (result.resultCode != Activity.RESULT_OK) {
             // 用户取消裁剪：不改动现有背景，也不持久化 Photo Picker 的临时 URI（重启后会失效）
             pendingSourceUri = null
@@ -83,6 +88,7 @@ class SettingsFragment : Fragment() {
         val outputUri = result.data?.let { UCrop.getOutput(it) }
         if (outputUri == null) {
             pendingSourceUri = null
+            UiFeedback.showMessage(view, "未获取到裁剪结果，请重新选择图片", paletteForFeedback())
             return@registerForActivityResult
         }
         AppPreferences.setCustomBackgroundUri(requireContext(), outputUri.toString())
@@ -614,10 +620,12 @@ class SettingsFragment : Fragment() {
             .withMaxResultSize(2048, 2048)
             .withOptions(options)
             .getIntent(requireContext())
+            .setClass(requireContext(), BackgroundCropActivity::class.java)
         runCatching {
             cropLauncher.launch(cropIntent)
         }.onFailure {
             pendingSourceUri = null
+            UiFeedback.showMessage(view, "无法打开图片裁剪，请重试", paletteForFeedback())
         }
     }
 }

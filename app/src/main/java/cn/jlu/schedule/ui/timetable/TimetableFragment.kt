@@ -339,13 +339,13 @@ class TimetableFragment : Fragment() {
         val cancel = Button(ctx).apply {
             text = getString(R.string.action_cancel)
             UiFeedback.styleSecondaryButton(this, palette)
-            textSize = 17f
+            textSize = 16f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             setPadding(dp(28), dp(14), dp(28), dp(14))
         }
         panel.addView(cancel, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            dp(62)
+            dp(56)
         ).apply { topMargin = dp(12) })
 
         dialog.show()

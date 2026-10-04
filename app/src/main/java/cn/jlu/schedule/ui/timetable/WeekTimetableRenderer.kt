@@ -70,6 +70,13 @@ class WeekTimetableRenderer(
         today: LocalDate
     ) {
         val context = headerRow.context
+        val headerPanel = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, m.headerCellHeight)
+            background = roundedBackground(withAlpha(palette.gridLeftColumn, panelAlpha), radius = 18f)
+            clipToOutline = true
+        }
+        headerRow.addView(headerPanel)
         val corner = TextView(context).apply {
             layoutParams = LinearLayout.LayoutParams(m.leftColumnWidth, m.headerCellHeight)
             text = String.format(Locale.getDefault(), "%d月", weekStart.monthValue)
@@ -77,10 +84,9 @@ class WeekTimetableRenderer(
             textSize = 11f * fontScale
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(palette.textPrimary)
-            background = roundedBackground(0x00000000, radius = 10f)
             includeFontPadding = false
         }
-        headerRow.addView(corner)
+        headerPanel.addView(corner)
 
         weekdays.forEachIndexed { index, weekday ->
             val date = weekStart.plusDays(index.toLong())
@@ -101,12 +107,12 @@ class WeekTimetableRenderer(
                 includeFontPadding = false
                 setTextColor(palette.textPrimary)
                 background = if (isToday) {
-                    roundedBackground(withAlpha(palette.gridHeaderToday, panelAlpha), radius = 10f)
+                    roundedBackground(withAlpha(palette.gridHeaderToday, panelAlpha), radius = 18f)
                 } else {
-                    roundedBackground(withAlpha(palette.gridHeader, panelAlpha), radius = 10f)
+                    null
                 }
             }
-            headerRow.addView(dayHeader)
+            headerPanel.addView(dayHeader)
         }
     }
 

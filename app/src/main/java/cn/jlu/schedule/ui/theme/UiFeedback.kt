@@ -1,12 +1,28 @@
 package cn.jlu.schedule.ui.theme
 
 import android.view.View
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.widget.Button
 import androidx.appcompat.app.AlertDialog
 import androidx.core.graphics.ColorUtils
 import com.google.android.material.snackbar.Snackbar
 
 object UiFeedback {
+    /** Keep touch feedback above the content and within the rounded surface. */
+    fun addPressFeedback(view: View, color: Int, radiusDp: Float) {
+        val mask = GradientDrawable().apply {
+            cornerRadius = radiusDp * view.resources.displayMetrics.density
+            setColor(Color.WHITE)
+        }
+        view.foreground = RippleDrawable(
+            ColorStateList.valueOf(ColorUtils.setAlphaComponent(color, 0x28)), null, mask
+        )
+        view.isFocusable = true
+    }
+
     fun showMessage(anchor: View?, message: String, palette: ThemePalette) {
         if (anchor == null) return
         Snackbar.make(anchor, message, Snackbar.LENGTH_SHORT)

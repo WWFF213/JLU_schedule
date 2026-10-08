@@ -101,6 +101,8 @@ class TimetableFragment : Fragment() {
         GlassSurface.apply(view.findViewById(R.id.timetableHeader), palette, GlassSurface.Variant.Panel, 24f)
         GlassSurface.apply(addCourseButton, palette, GlassSurface.Variant.Control, 18f)
         GlassSurface.apply(importScheduleButton, palette, GlassSurface.Variant.Control, 18f)
+        UiFeedback.addPressFeedback(addCourseButton, palette.iconTint, 18f)
+        UiFeedback.addPressFeedback(importScheduleButton, palette.iconTint, 18f)
         addCourseButton.imageTintList = ColorStateList.valueOf(palette.iconTint)
         importScheduleButton.imageTintList = ColorStateList.valueOf(palette.iconTint)
 

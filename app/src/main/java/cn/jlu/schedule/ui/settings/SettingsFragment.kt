@@ -8,10 +8,12 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.BitmapFactory
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -31,13 +33,16 @@ import androidx.lifecycle.repeatOnLifecycle
 import cn.jlu.schedule.MainActivity
 import cn.jlu.schedule.R
 import cn.jlu.schedule.data.AppPreferences
+import cn.jlu.schedule.data.CustomBackgroundStorage
 import cn.jlu.schedule.data.ImportedScheduleStorage
 import cn.jlu.schedule.data.ScheduleRepository
 import cn.jlu.schedule.data.SemesterStartDatePolicy
 import cn.jlu.schedule.domain.SectionTimes
 import cn.jlu.schedule.ui.theme.ThemePalette
+import cn.jlu.schedule.ui.theme.BackgroundReadability
 import cn.jlu.schedule.ui.theme.ThemePaletteProvider
 import cn.jlu.schedule.ui.theme.UiFeedback
+import cn.jlu.schedule.ui.theme.GlassSurface
 import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -50,7 +55,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class SettingsFragment : Fragment() {
-    private var pendingSourceUri: Uri? = null
+    private var pendingCropFile: File? = null
     private var accountCheckJob: Job? = null
 
     private val manageProfilesLauncher =
@@ -68,21 +73,52 @@ class SettingsFragment : Fragment() {
 
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
-            pendingSourceUri = uri
             startCrop(uri)
         }
     }
 
     private val cropLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode != Activity.RESULT_OK) {
-            // 用户取消裁剪：不改动现有背景，也不持久化 Photo Picker 的临时 URI（重启后会失效）
-            pendingSourceUri = null
-            return@registerForActivityResult
+        try {
+            when (result.resultCode) {
+                Activity.RESULT_OK -> {
+                    val context = requireContext()
+                    val file = requireNotNull(pendingCropFile) { "裁剪图片已丢失，请重新选择" }
+                    val output = requireNotNull(result.data?.let(UCrop::getOutput)) { "裁剪未返回图片" }
+                    require(output == FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file))
+                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeFile(file.absolutePath, bounds)
+                    require(bounds.outWidth > 0 && bounds.outHeight > 0) { "无法读取裁剪图片" }
+                    val saved = CustomBackgroundStorage.commitCrop(context.filesDir, file)
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", saved)
+                    AppPreferences.setCustomBackgroundUri(context, uri.toString())
+                    (activity as? MainActivity)?.refreshCustomBackground()
+                    view?.let { refreshBackgroundPanels(it) }
+                    UiFeedback.showMessage(view, "背景已更新", paletteForFeedback())
+                }
+                UCrop.RESULT_ERROR -> throw result.data?.let(UCrop::getError)
+                    ?: IllegalStateException("无法裁剪所选图片")
+                // Cancelled: keep the current background and its preference.
+            }
+        } catch (error: Exception) {
+            Log.w("CustomBackground", "Could not save cropped background", error)
+            UiFeedback.showMessage(view, "背景导入失败，请重新选择图片", paletteForFeedback())
+        } finally {
+            pendingCropFile?.delete()
+            pendingCropFile = null
         }
-        val outputUri = result.data?.let { UCrop.getOutput(it) } ?: return@registerForActivityResult
-        AppPreferences.setCustomBackgroundUri(requireContext(), outputUri.toString())
-        (activity as? MainActivity)?.refreshCustomBackground()
-        pendingSourceUri = null
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val filename = savedInstanceState?.getString("pending_crop_filename")
+        if (filename != null && filename == File(filename).name) {
+            pendingCropFile = File(requireContext().cacheDir, "background_crops/$filename")
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        pendingCropFile?.let { outState.putString("pending_crop_filename", it.name) }
     }
 
     private val requestNotificationPermission =
@@ -123,28 +159,8 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val palette = ThemePaletteProvider.fromContext(requireContext())
-        val density = resources.displayMetrics.density
+        refreshBackgroundPanels(view)
 
-        // 卡片与分隔线按主题色板着色
-        listOf(
-            view.findViewById<LinearLayout>(R.id.settingsCardTimetable),
-            view.findViewById<LinearLayout>(R.id.settingsCardAccount),
-            view.findViewById<LinearLayout>(R.id.settingsCardAppearance),
-            view.findViewById<LinearLayout>(R.id.settingsCardReminder),
-            view.findViewById<LinearLayout>(R.id.settingsCardBackground),
-            view.findViewById<LinearLayout>(R.id.settingsCardData),
-            view.findViewById<LinearLayout>(R.id.settingsCardAbout),
-        ).forEach { card ->
-            card.background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = 18f * density
-                setColor(palette.detailCard)
-                setStroke(
-                    maxOf(1, density.toInt()),
-                    ColorUtils.blendARGB(palette.detailCard, palette.textSecondary, 0.13f)
-                )
-            }
-        }
         listOf(
             view.findViewById<ImageView>(R.id.iconTimetable),
             view.findViewById<ImageView>(R.id.iconAccount),
@@ -155,15 +171,9 @@ class SettingsFragment : Fragment() {
             view.findViewById<ImageView>(R.id.iconAbout),
         ).forEach { icon ->
             icon.imageTintList = ColorStateList.valueOf(palette.iconTint)
-            icon.background = GradientDrawable().apply {
-                cornerRadius = 11f * density
-                setColor(ColorUtils.blendARGB(palette.detailCard, palette.buttonBackground, 0.65f))
-            }
+            icon.background = GlassSurface.drawable(icon.context, palette, GlassSurface.Variant.Control, 14f)
         }
-        view.findViewById<View>(R.id.accountStatusPanel).background = GradientDrawable().apply {
-            cornerRadius = 12f * density
-            setColor(ColorUtils.blendARGB(palette.detailCard, palette.buttonBackground, 0.46f))
-        }
+        GlassSurface.apply(view.findViewById(R.id.accountStatusPanel), palette, GlassSurface.Variant.Control, 18f)
 
         // 可点击行
         val semesterStartDateText = view.findViewById<TextView>(R.id.semesterStartDateText)
@@ -205,6 +215,7 @@ class SettingsFragment : Fragment() {
             AppPreferences.setCustomBackgroundUri(requireContext(), null)
             runCatching { File(requireContext().filesDir, "custom_background.jpg").delete() }
             (activity as? MainActivity)?.refreshCustomBackground()
+            refreshBackgroundPanels(view)
             UiFeedback.showMessage(view, "已恢复默认背景", palette)
         }
         view.findViewById<View>(R.id.rowExportText).setOnClickListener {
@@ -397,7 +408,32 @@ class SettingsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        view?.let { refreshAccountCard(it) }
+        view?.let {
+            refreshAccountCard(it)
+            refreshBackgroundPanels(it)
+        }
+    }
+
+    private fun refreshBackgroundPanels(view: View) {
+        val palette = ThemePaletteProvider.fromContext(view.context)
+        // 卡片与分隔线按主题色板着色
+        listOf(
+            view.findViewById<LinearLayout>(R.id.settingsCardTimetable),
+            view.findViewById<LinearLayout>(R.id.settingsCardAccount),
+            view.findViewById<LinearLayout>(R.id.settingsCardAppearance),
+            view.findViewById<LinearLayout>(R.id.settingsCardReminder),
+            view.findViewById<LinearLayout>(R.id.settingsCardBackground),
+            view.findViewById<LinearLayout>(R.id.settingsCardData),
+            view.findViewById<LinearLayout>(R.id.settingsCardAbout),
+        ).forEach { card ->
+            GlassSurface.apply(card, palette, GlassSurface.Variant.Panel, 24f)
+        }
+        BackgroundReadability.protectPanel(view.findViewById(R.id.settingsHeader), palette)
+        view.findViewById<TextView>(R.id.settingsFooterVersion).apply {
+            BackgroundReadability.protectPanel(this, palette, radiusDp = 12f)
+            val padding = (8 * resources.displayMetrics.density).toInt()
+            setPadding(padding, padding, padding, padding)
+        }
     }
 
     override fun onDestroyView() {
@@ -608,25 +644,27 @@ class SettingsFragment : Fragment() {
     }
 
     private fun startCrop(sourceUri: Uri) {
-        val outputFile = File(requireContext().filesDir, "custom_background.jpg")
-        val destinationUri = FileProvider.getUriForFile(
-            requireContext(),
-            "${requireContext().packageName}.fileprovider",
-            outputFile
-        )
-
-        val options = UCrop.Options().apply {
-            setFreeStyleCropEnabled(true)
-            setHideBottomControls(false)
-        }
-
-        val cropIntent = UCrop.of(sourceUri, destinationUri)
-            .withOptions(options)
-            .getIntent(requireContext())
         runCatching {
+            val context = requireContext()
+            pendingCropFile?.delete()
+            val outputFile = CustomBackgroundStorage.createCropFile(context.cacheDir)
+            pendingCropFile = outputFile
+            val destinationUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", outputFile)
+            val options = UCrop.Options().apply {
+                setFreeStyleCropEnabled(true)
+                setHideBottomControls(false)
+            }
+            val cropIntent = UCrop.of(sourceUri, destinationUri)
+                .withMaxResultSize(2160, 3840)
+                .withOptions(options)
+                .getIntent(context)
+                .setClass(context, BackgroundCropActivity::class.java)
             cropLauncher.launch(cropIntent)
-        }.onFailure {
-            pendingSourceUri = null
+        }.onFailure { error ->
+            pendingCropFile?.delete()
+            pendingCropFile = null
+            Log.w("CustomBackground", "Could not open image cropper", error)
+            UiFeedback.showMessage(view, "无法打开图片裁剪，请重新选择图片", paletteForFeedback())
         }
     }
 }

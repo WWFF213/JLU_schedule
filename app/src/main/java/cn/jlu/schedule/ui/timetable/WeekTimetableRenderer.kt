@@ -10,11 +10,13 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.graphics.ColorUtils
 import cn.jlu.schedule.data.AppPreferences
 import cn.jlu.schedule.domain.CourseMeetingDisplayRef
 import cn.jlu.schedule.domain.CourseMeetingRef
 import cn.jlu.schedule.model.Weekday
 import cn.jlu.schedule.ui.theme.ThemePalette
+import cn.jlu.schedule.ui.theme.UiFeedback
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -37,7 +39,10 @@ class WeekTimetableRenderer(
         Weekday.SUNDAY
     )
 
-    private val panelAlpha = if (hasCustomBackground) 0.34f else 1f
+    // Keep enough opacity for course text to remain readable over user photos.
+    private val panelAlpha = if (hasCustomBackground) 0.94f else 1f
+    private val gridAlpha = if (hasCustomBackground) 0.34f else 1f
+    private var density = 1f
 
     fun render(
         headerRow: LinearLayout,
@@ -49,6 +54,7 @@ class WeekTimetableRenderer(
         today: LocalDate,
         currentSection: Int?
     ) {
+        density = headerRow.resources.displayMetrics.density
         headerRow.removeAllViews()
         bodyRow.removeAllViews()
         headerRow.setPadding(metrics.outerPadding, 0, metrics.outerPadding, 0)
@@ -66,6 +72,15 @@ class WeekTimetableRenderer(
         today: LocalDate
     ) {
         val context = headerRow.context
+        val headerPanel = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            isBaselineAligned = false
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, m.headerCellHeight)
+            background = roundedBackground(withAlpha(palette.gridLeftColumn, panelAlpha), radius = 18f)
+            clipToOutline = true
+        }
+        headerRow.addView(headerPanel)
         val corner = TextView(context).apply {
             layoutParams = LinearLayout.LayoutParams(m.leftColumnWidth, m.headerCellHeight)
             text = String.format(Locale.getDefault(), "%d月", weekStart.monthValue)
@@ -73,10 +88,9 @@ class WeekTimetableRenderer(
             textSize = 11f * fontScale
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(palette.textPrimary)
-            background = roundedBackground(0x00000000, radius = 10f)
             includeFontPadding = false
         }
-        headerRow.addView(corner)
+        headerPanel.addView(corner)
 
         weekdays.forEachIndexed { index, weekday ->
             val date = weekStart.plusDays(index.toLong())
@@ -97,12 +111,12 @@ class WeekTimetableRenderer(
                 includeFontPadding = false
                 setTextColor(palette.textPrimary)
                 background = if (isToday) {
-                    roundedBackground(withAlpha(palette.gridHeaderToday, panelAlpha), radius = 10f)
+                    roundedBackground(withAlpha(palette.gridHeaderToday, panelAlpha), radius = 18f)
                 } else {
-                    roundedBackground(withAlpha(palette.gridHeader, panelAlpha), radius = 10f)
+                    null
                 }
             }
-            headerRow.addView(dayHeader)
+            headerPanel.addView(dayHeader)
         }
     }
 
@@ -119,6 +133,7 @@ class WeekTimetableRenderer(
         val leftColumn = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(m.leftColumnWidth, ViewGroup.LayoutParams.WRAP_CONTENT)
+            background = roundedBackground(withAlpha(palette.gridLeftColumn, panelAlpha), radius = 18f)
         }
 
         periodRanges.forEachIndexed { index, time ->
@@ -126,7 +141,6 @@ class WeekTimetableRenderer(
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 layoutParams = LinearLayout.LayoutParams(m.leftColumnWidth, m.sectionHeight)
-                background = roundedBackground(withAlpha(palette.gridLeftColumn, panelAlpha), radius = 8f)
             }
             val label = TextView(context).apply {
                 text = String.format(Locale.getDefault(), "%d", index + 1)
@@ -144,7 +158,8 @@ class WeekTimetableRenderer(
             val endTime = time.substringAfter('-')
             val timeLabel = TextView(context).apply {
                 text = startTime
-                textSize = 9f * fontScale
+                textSize = 10.5f * fontScale
+                maxLines = 1
                 gravity = Gravity.CENTER
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -155,7 +170,8 @@ class WeekTimetableRenderer(
             }
             val timeLabelEnd = TextView(context).apply {
                 text = endTime
-                textSize = 9f * fontScale
+                textSize = 10.5f * fontScale
+                maxLines = 1
                 gravity = Gravity.CENTER
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -193,9 +209,9 @@ class WeekTimetableRenderer(
                 marginStart = m.cellGap
             }
             background = if (isToday) {
-                roundedBackground(withAlpha(palette.gridDayToday, panelAlpha), radius = 8f)
+                roundedBackground(withAlpha(palette.gridDayToday, gridAlpha), radius = 8f)
             } else {
-                roundedBackground(withAlpha(palette.gridDayCell, panelAlpha), radius = 8f)
+                roundedBackground(withAlpha(palette.gridDayCell, gridAlpha), radius = 8f)
             }
         }
 
@@ -231,6 +247,7 @@ class WeekTimetableRenderer(
                         leftMargin = (m.cellGap / 2) + dpToPx(context, 3f)
                     }
                     background = roundedBackground(secondaryColor, radius = 10f)
+                    UiFeedback.addPressFeedback(this, CourseCardColors.textColorFor(secondaryItem.courseIndex, palette.isDark), 10f)
                     alpha = if (secondaryItem.isCurrentWeek) 0.82f else 0.42f
                     elevation = 5f
                     setOnClickListener {
@@ -251,8 +268,14 @@ class WeekTimetableRenderer(
                 }
                 orientation = LinearLayout.VERTICAL
                 setPadding(m.cardPadding, m.cardPadding, m.cardPadding, m.cardPadding)
-                alpha = if (item.isCurrentWeek) 1f else 0.55f
-                background = roundedBackground(CourseCardColors.forCourse(item.courseIndex, palette.isDark))
+                alpha = if (item.isCurrentWeek || hasCustomBackground) 1f else 0.55f
+                val courseColor = CourseCardColors.forCourse(item.courseIndex, palette.isDark)
+                background = roundedBackground(
+                    if (hasCustomBackground && !item.isCurrentWeek) {
+                        ColorUtils.blendARGB(courseColor, palette.panelAltBackground, 0.55f)
+                    } else courseColor
+                )
+                UiFeedback.addPressFeedback(this, CourseCardColors.textColorFor(item.courseIndex, palette.isDark), 8f)
                 elevation = if (isCurrentCourse) 10f else if (slot.hasConflict) 7f else 6f
                 setOnClickListener {
                     onCourseClick(
@@ -268,7 +291,9 @@ class WeekTimetableRenderer(
                     val conflictCount = slot.allCourses.size
                     addView(TextView(context).apply {
                         text = if (conflictCount > 2) "重叠·${conflictCount}" else "重叠·2"
-                        textSize = 7.5f * fontScale
+                        textSize = 9f * fontScale
+                        maxLines = 1
+                        ellipsize = android.text.TextUtils.TruncateAt.END
                         setTypeface(typeface, Typeface.BOLD)
                         setTextColor(CourseCardColors.textColorFor(item.courseIndex, palette.isDark))
                         background = roundedBackground(
@@ -289,30 +314,18 @@ class WeekTimetableRenderer(
                 if (!item.isCurrentWeek) {
                     addView(TextView(context).apply {
                         text = "[非本周] 第${item.nextActiveWeek}周"
-                        textSize = 8f * fontScale
+                        textSize = 9f * fontScale
                         setTextColor(CourseCardColors.textColorFor(item.courseIndex, palette.isDark))
                         maxLines = 1
+                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        includeFontPadding = false
                     })
                 }
 
-                addView(TextView(context).apply {
-                    text = item.course.courseName
-                    textSize = fittedSize(item.course.courseName, 12f, 9.8f) * fontScale
-                    setTextColor(CourseCardColors.textColorFor(item.courseIndex, palette.isDark))
-                    setTypeface(typeface, Typeface.BOLD)
-                    maxLines = if (spanCount >= 2) 3 else 2
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    includeFontPadding = false
-                })
-
-                addView(TextView(context).apply {
-                    text = item.meeting.location.ifBlank { "教室待定" }
-                    textSize = fittedSize(item.meeting.location, 9.5f, 8.2f) * fontScale
-                    setTextColor(CourseCardColors.textColorFor(item.courseIndex, palette.isDark))
-                    maxLines = (spanCount * 2).coerceIn(2, 6)
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    includeFontPadding = false
-                })
+                addCourseText(this, cardWidth, cardHeight.coerceAtLeast(36),
+                    item.course.courseName, item.meeting.location,
+                    CourseCardColors.textColorFor(item.courseIndex, palette.isDark),
+                    if (spanCount >= 2) 3 else 2)
             }
             dayColumn.addView(card)
 
@@ -328,6 +341,7 @@ class WeekTimetableRenderer(
                     orientation = LinearLayout.VERTICAL
                     setPadding(m.cardPadding, m.cardPadding, m.cardPadding, m.cardPadding)
                     background = roundedBackground(CourseCardColors.forCourse(segment.course.courseIndex, palette.isDark))
+                    UiFeedback.addPressFeedback(this, CourseCardColors.textColorFor(segment.course.courseIndex, palette.isDark), 8f)
                     elevation = 6f
                     setOnClickListener {
                         onCourseClick(
@@ -335,23 +349,9 @@ class WeekTimetableRenderer(
                             slot.allCourses.map { it.toCourseMeetingRef() }
                         )
                     }
-                    addView(TextView(context).apply {
-                        text = segment.course.course.courseName
-                        textSize = fittedSize(segment.course.course.courseName, 12f, 9.8f) * fontScale
-                        setTextColor(CourseCardColors.textColorFor(segment.course.courseIndex, palette.isDark))
-                        setTypeface(typeface, Typeface.BOLD)
-                        maxLines = 2
-                        ellipsize = android.text.TextUtils.TruncateAt.END
-                        includeFontPadding = false
-                    })
-                    addView(TextView(context).apply {
-                        text = segment.course.meeting.location.ifBlank { "教室待定" }
-                        textSize = 9f * fontScale
-                        setTextColor(CourseCardColors.textColorFor(segment.course.courseIndex, palette.isDark))
-                        maxLines = 2
-                        ellipsize = android.text.TextUtils.TruncateAt.END
-                        includeFontPadding = false
-                    })
+                    addCourseText(this, cardWidth, segmentHeight.coerceAtLeast(36),
+                        segment.course.course.courseName, segment.course.meeting.location,
+                        CourseCardColors.textColorFor(segment.course.courseIndex, palette.isDark), 2)
                 }
                 dayColumn.addView(continuation)
             }
@@ -562,18 +562,53 @@ class WeekTimetableRenderer(
     private fun roundedBackground(fill: Int, radius: Float = 8f): GradientDrawable {
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
+            cornerRadius = radius * density
             setColor(fill)
+            if ((fill ushr 24) > 0x40) {
+                setStroke(1, ColorUtils.setAlphaComponent(palette.glassHighlight, if (palette.isDark) 0x35 else 0x50))
+            }
         }
     }
 
-    /** 按文本长度轻度降字号：≤6 字原字号，≤14 字打九折，更长打八折但不低于 [min] */
-    private fun fittedSize(text: String, base: Float, min: Float): Float {
-        return when {
-            text.length <= 6 -> base
-            text.length <= 14 -> base * 0.9f
-            else -> maxOf(base * 0.8f, min)
+    /** Allocate lines from actual card space instead of making long names increasingly tiny. */
+    private fun addCourseText(
+        card: LinearLayout, width: Int, height: Int,
+        name: String, location: String, color: Int, preferredNameLines: Int
+    ) {
+        val contentWidth = (width - card.paddingLeft - card.paddingRight).coerceAtLeast(1)
+        val widthSpec = View.MeasureSpec.makeMeasureSpec(contentWidth, View.MeasureSpec.AT_MOST)
+        val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        var availableHeight = height - card.paddingTop - card.paddingBottom
+        for (index in 0 until card.childCount) {
+            val badge = card.getChildAt(index)
+            badge.measure(widthSpec, heightSpec)
+            val margins = badge.layoutParams as? ViewGroup.MarginLayoutParams
+            availableHeight -= badge.measuredHeight + (margins?.topMargin ?: 0) + (margins?.bottomMargin ?: 0)
         }
+        fun textView(value: String, size: Float) = TextView(card.context).apply {
+            text = value
+            textSize = size * fontScale
+            setTextColor(color)
+            includeFontPadding = false
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+        val title = textView(name, 12f).apply { setTypeface(typeface, Typeface.BOLD) }
+        val place = textView(location.ifBlank { "教室待定" }, 10.5f)
+        val gap = dpToPx(card.context, 2f)
+        title.maxLines = ((availableHeight - place.lineHeight - gap) / title.lineHeight.coerceAtLeast(1))
+            .coerceIn(1, preferredNameLines)
+        title.measure(View.MeasureSpec.makeMeasureSpec(contentWidth, View.MeasureSpec.EXACTLY), heightSpec)
+        card.addView(title)
+        val locationLines = ((availableHeight - title.measuredHeight - gap) / place.lineHeight.coerceAtLeast(1)).coerceIn(0, 2)
+        if (locationLines > 0) {
+            place.maxLines = locationLines
+            (place.layoutParams as LinearLayout.LayoutParams).topMargin = gap
+            card.addView(place)
+        }
+        // Full values remain available through accessibility and the existing course-detail sheet.
+        card.contentDescription = listOfNotNull(card.contentDescription?.toString(), name,
+            location.ifBlank { "教室待定" }).joinToString("，")
     }
 
     private fun withAlpha(color: Int, alphaFactor: Float): Int {

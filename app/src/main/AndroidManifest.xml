@@ -27,6 +27,10 @@
                 android:resource="@xml/file_paths" />
         </provider>
         <activity
+            android:name=".ui.settings.BackgroundCropActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+        <activity
             android:name=".ui.settings.TimetableManageActivity"
             android:exported="false" />
         <activity
@@ -63,6 +67,10 @@
         <activity
             android:name=".ui.importer.QuickImportActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
             android:exported="false"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
         <receiver

@@ -24,7 +24,11 @@ data class ThemePalette(
     val detailTitle: Int,
     val detailBody: Int,
     val detailMeta: Int,
-    val isDark: Boolean
+    val isDark: Boolean,
+    val glassSurface: Int = panelBackground,
+    val glassSurfaceStrong: Int = panelAltBackground,
+    val glassStroke: Int = iconTint,
+    val glassHighlight: Int = 0xFFFFFFFF.toInt()
 )
 
 object ThemePaletteProvider {
@@ -46,14 +50,17 @@ object ThemePaletteProvider {
         }
         val isDark = (context.resources.configuration.uiMode and
             android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val panel = color("panel_background")
+        val panelAlt = color("panel_alt_background")
+        val icon = color("icon_tint")
         return ThemePalette(
             pageBackground = color("page_background"),
             navBackground = color("nav_background"),
-            panelBackground = color("panel_background"),
-            panelAltBackground = color("panel_alt_background"),
+            panelBackground = panel,
+            panelAltBackground = panelAlt,
             textPrimary = color("text_primary"),
             textSecondary = color("text_secondary"),
-            iconTint = color("icon_tint"),
+            iconTint = icon,
             buttonBackground = color("button_background"),
             buttonText = color("button_text"),
             gridHeader = color("grid_header"),
@@ -65,7 +72,11 @@ object ThemePaletteProvider {
             detailTitle = color("detail_title"),
             detailBody = color("detail_body"),
             detailMeta = color("detail_meta"),
-            isDark = isDark
+            isDark = isDark,
+            glassSurface = panel,
+            glassSurfaceStrong = panelAlt,
+            glassStroke = icon,
+            glassHighlight = if (isDark) 0x55FFFFFF else 0xCCFFFFFF.toInt()
         )
     }
 
